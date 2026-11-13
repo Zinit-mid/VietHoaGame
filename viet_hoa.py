@@ -9,7 +9,7 @@ va cai / go goi Viet hoa. Windows 10/11.
   - Game cap nhat de mat Viet hoa -> bao "Cai lai"
 """
 
-APP_VERSION = "0.4.0"
+APP_VERSION = "0.5.0"
 REPO = "Zinit-mid/VietHoaGame"
 
 import ctypes

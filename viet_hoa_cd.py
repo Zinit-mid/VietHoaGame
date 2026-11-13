@@ -34,6 +34,9 @@ DOT = {
                  "sublevel", "house", "housingroom", "housingobjectgroup", "socket"],
         # cac file nay lan ten va mo ta: chi dich CAU (mo ta), giu nguyen ten / nhan
         "chi_cau": ["item", "multichange", "gimmick", "character", "npc", "faction", "housingobject"]},
+    3: {"ten": "Đợt 3 – bách khoa (knowledge): giới thiệu nhân vật, vùng đất, sinh vật, lịch sử",
+        "file": ["knowledge"],
+        "chi_cau": ["knowledge"]},
 }
 # file chi chua ten -> lam bang ten rieng (giu nguyen, khong dich)
 FILE_TEN = ["npcname", "character", "region", "faction", "factionoperationgroup", "item", "itemgroup",

@@ -1,7 +1,6 @@
-## Việt Hóa Game v0.4.0
+## Việt Hóa Game v0.5.0
 
-**Crimson Desert – chọn máy dịch**
-- Cửa sổ "Việt hóa bằng Claude" có thêm **Máy dịch: Claude / Offline (miễn phí)**
-- **Đợt 2 mặc định dịch Offline** bằng CPU – không tốn tiền Claude
-- Dùng lại mô hình offline mà app Dịch Game đã tải (quickmt-en-vi), không tải lại
-- Giữ nguyên mã phím {Key:...}, {Param1}, <br/> khi dịch offline
+**Crimson Desert – thêm Đợt 3: bách khoa (knowledge)**
+- Giới thiệu nhân vật, vùng đất, sinh vật, lịch sử… (~5.500 đoạn, ~1,25 triệu ký tự)
+- Mặc định dịch **Offline (miễn phí)**; tên mục / tên riêng giữ tiếng Anh, chỉ dịch phần mô tả
+- "Xuất gói cho DMM" gộp cả 3 đợt vào một file
