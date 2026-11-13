@@ -20,6 +20,7 @@ import crimson_desert as cd
 DU_LIEU = os.path.join(os.environ.get("APPDATA") or os.path.dirname(os.path.abspath(__file__)), "VietHoaGame")
 THU_MUC_CD = os.path.join(DU_LIEU, "crimson_desert")
 FILE_BO_NHO = os.path.join(THU_MUC_CD, "bo_nho_dich.json")
+FILE_DO_LUONG = os.path.join(THU_MUC_CD, "do_luong_chi_phi.json")
 DICH_GAME = os.path.join(os.environ.get("APPDATA") or "", "DichGame")
 STEAM_APPID = "3321460"
 
@@ -405,9 +406,32 @@ class ViecDich:
 
     @staticmethod
     def uoc_tinh_usd(ky_tu, gia):
-        vao = ky_tu / 3.6 * 1.35 + 900 * (ky_tu / KY_TU_MOI_LO + 1)   # chu + huong dan moi lo
+        """Theo so do thuc te (USD / ky tu) cua cac lan dich truoc; chua co thi dung he so da hieu chinh
+        (lan dau do duoc: ~1 USD cho 720k ky tu ~ 4,2 lan cong thuc cu)."""
+        try:
+            with open(FILE_DO_LUONG, encoding="utf-8") as f:
+                d = json.load(f)
+            if d.get("ky_tu", 0) > 50000:
+                return ky_tu * d["usd"] / d["ky_tu"]
+        except Exception:
+            pass
+        vao = ky_tu / 3.6 * 1.35 + 900 * (ky_tu / KY_TU_MOI_LO + 1)
         ra = ky_tu / 3.6 * 1.9
-        return vao * gia[0] / 1e6 + ra * gia[1] / 1e6
+        return (vao * gia[0] / 1e6 + ra * gia[1] / 1e6) * 4.2
+
+    def _ghi_do_luong(self, ky_tu, usd):
+        if ky_tu <= 0 or usd <= 0:
+            return
+        try:
+            with open(FILE_DO_LUONG, encoding="utf-8") as f:
+                d = json.load(f)
+        except Exception:
+            d = {"ky_tu": 0, "usd": 0.0}
+        d["ky_tu"] += ky_tu
+        d["usd"] += usd
+        os.makedirs(THU_MUC_CD, exist_ok=True)
+        with open(FILE_DO_LUONG, "w", encoding="utf-8") as f:
+            json.dump(d, f)
 
     # ---------------------------------------------------------- dich
     def _chia_lo(self, ds):
@@ -543,6 +567,8 @@ class ViecDich:
                             else:
                                 self.loi += 1
                     xong += len(lo)
+                    ky_tu_xong = sum(len(v) for v in lo)
+                    self._ghi_do_luong(ky_tu_xong, tien)
                     tien_do(xong, tong, self.tien)
                     if time.time() - lan_luu > 20:
                         self.luu()

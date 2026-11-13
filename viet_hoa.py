@@ -9,7 +9,7 @@ va cai / go goi Viet hoa. Windows 10/11.
   - Game cap nhat de mat Viet hoa -> bao "Cai lai"
 """
 
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.5.1"
 REPO = "Zinit-mid/VietHoaGame"
 
 import ctypes
@@ -553,9 +553,12 @@ TEN_NGUON = {"steam": "Steam", "epic": "Epic", "gog": "GOG", "tay": "Thêm tay"}
 
 
 class App:
-    def __init__(self):
+    def __init__(self, cha=None, khi_dong=None):
+        """cha: cua so Tk cua app Dich Game -> mo launcher thanh cua so con (khong tu cap nhat rieng)."""
         import tkinter as tk
         from tkinter import filedialog, messagebox
+        self.nhung = cha is not None
+        self.khi_dong = khi_dong
         self.tk, self.filedialog, self.messagebox = tk, filedialog, messagebox
         os.makedirs(DU_LIEU, exist_ok=True)
         self.cfg = doc_json(FILE_CAU_HINH, {})
@@ -567,8 +570,10 @@ class App:
         self.dang_ban = False
         self.ban_moi = None
 
-        self.root = tk.Tk()
-        self.root.title(f"Việt Hóa Game v{APP_VERSION}")
+        self.root = tk.Toplevel(cha) if self.nhung else tk.Tk()
+        self.root.title("Việt hóa game" if self.nhung else f"Việt Hóa Game v{APP_VERSION}")
+        if self.nhung:
+            self.root.protocol("WM_DELETE_WINDOW", self.dong)
         self.root.configure(bg=UI_NEN)
         self.root.geometry("820x600")
         self.root.minsize(620, 420)
@@ -579,7 +584,8 @@ class App:
         self._giao_dien()
         self.root.after(100, self._xu_ly_hang_doi)
         self.root.after(200, self.quet)
-        threading.Thread(target=self._kiem_tra_cap_nhat, daemon=True).start()
+        if not self.nhung:
+            threading.Thread(target=self._kiem_tra_cap_nhat, daemon=True).start()
 
     # ---------------------------------------------------------- dung giao dien
     def _nut(self, cha, chu, cmd, chinh=False, nho=False):
@@ -598,10 +604,12 @@ class App:
         dau = tk.Frame(self.root, bg=UI_NEN, padx=16, pady=12)
         dau.pack(fill="x")
         tk.Label(dau, text="Việt Hóa Game", bg=UI_NEN, fg=UI_CHU, font=("Segoe UI", 16, "bold")).pack(side="left")
-        tk.Label(dau, text=f"v{APP_VERSION}", bg=UI_NEN, fg=UI_PHU, font=("Segoe UI", 9)).pack(
-            side="left", padx=(8, 0), pady=(6, 0))
+        if not self.nhung:
+            tk.Label(dau, text=f"v{APP_VERSION}", bg=UI_NEN, fg=UI_PHU, font=("Segoe UI", 9)).pack(
+                side="left", padx=(8, 0), pady=(6, 0))
         self.nut_cap_nhat = self._nut(dau, "Kiểm tra cập nhật", self.cap_nhat, nho=True)
-        self.nut_cap_nhat.pack(side="right")
+        if not self.nhung:
+            self.nut_cap_nhat.pack(side="right")
         if not la_admin():
             self._nut(dau, "Chạy bằng quyền quản trị", self._quyen_quan_tri, nho=True).pack(side="right", padx=6)
 
@@ -625,7 +633,7 @@ class App:
         self.cv.configure(yscrollcommand=thanh_cuon.set)
         self.cv.pack(side="left", fill="both", expand=True)
         thanh_cuon.pack(side="right", fill="y")
-        self.root.bind_all("<MouseWheel>", lambda e: self.cv.yview_scroll(int(-e.delta / 120), "units"))
+        self.root.bind("<MouseWheel>", lambda e: self.cv.yview_scroll(int(-e.delta / 120), "units"))
 
         day = tk.Frame(self.root, bg=UI_THE, padx=16, pady=8)
         day.pack(fill="x", side="bottom")
@@ -740,7 +748,8 @@ class App:
                     self.root.after(500, self.root.destroy)
         except queue.Empty:
             pass
-        self.root.after(100, self._xu_ly_hang_doi)
+        if not getattr(self, "dang_dong", False):
+            self.root.after(100, self._xu_ly_hang_doi)
 
     def _kiem_trang(self, games, danh_muc, bao):
         kq = {}
@@ -1045,6 +1054,20 @@ class App:
             self.cd_viec.dung.set()
         self.cua_so_cd = None
         w.destroy()
+
+    def dong(self):
+        if getattr(self, "cua_so_cd", None) is not None:
+            try:
+                self._dong_cd(self.cua_so_cd)
+            except Exception:
+                pass
+        self.dang_dong = True
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
+        if self.khi_dong:
+            self.khi_dong()
 
     def chay(self):
         self.root.mainloop()
