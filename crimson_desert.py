@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Cong cu chu cua Crimson Desert (ban 2.04+): doc / ghi file .paloc.
 
-  python cong_cu/crimson_desert.py xuat  <thu_muc_nhom_0020> <ra.json>
+  python crimson_desert.py xuat  <thu_muc_nhom_0020> <ra.json>
       -> giai ma toan bo .paloc trong nhom, xuat {ten_file: [[khoa, chu], ...]}
-  python cong_cu/crimson_desert.py dong_goi <thu_muc_nhom_0020> <ban_dich.json> <thu_muc_ra>
+  python crimson_desert.py dong_goi <thu_muc_nhom_0020> <ban_dich.json> <thu_muc_ra>
       -> ghi lai cac .paloc da dich (dang giai ma, boc LZ4 nhu game) de trinh nap mod dua vao game
 
 ban_dich.json: {ten_file: {khoa: "chu tieng Viet", ...}, ...} – chi can cac cau da dich.

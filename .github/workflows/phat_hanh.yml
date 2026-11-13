@@ -39,14 +39,14 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller
+          python -m pip install pyinstaller cryptography
 
       - name: Dong goi VietHoaGame.exe
         if: steps.pb.outputs.co_roi == '0'
         shell: pwsh
         run: >
           python -m PyInstaller --noconfirm --onefile --noconsole --name VietHoaGame
-          --icon icon.ico --add-data "icon.ico;." --add-data "danh_muc.json;."
+          --icon icon.ico --add-data "icon.ico;." --add-data "danh_muc.json;." --hidden-import viet_hoa_cd --hidden-import crimson_desert --collect-submodules cryptography
           viet_hoa.py
 
       - name: Tao goi phat hanh
@@ -55,7 +55,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force phat_hanh | Out-Null
           Copy-Item dist/VietHoaGame.exe phat_hanh/VietHoaGame.exe
-          Compress-Archive -Force -Path viet_hoa.py,danh_muc.json,icon.ico,chay_thu.bat,HUONG_DAN.txt,cong_cu -DestinationPath phat_hanh/VietHoaGame.zip
+          Compress-Archive -Force -Path viet_hoa.py,viet_hoa_cd.py,crimson_desert.py,danh_muc.json,icon.ico,chay_thu.bat,HUONG_DAN.txt,cong_cu -DestinationPath phat_hanh/VietHoaGame.zip
 
       - name: Dang Release
         if: steps.pb.outputs.co_roi == '0'

@@ -9,7 +9,7 @@ va cai / go goi Viet hoa. Windows 10/11.
   - Game cap nhat de mat Viet hoa -> bao "Cai lai"
 """
 
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 REPO = "Zinit-mid/VietHoaGame"
 
 import ctypes
@@ -258,6 +258,11 @@ def tim_tat_ca(game_tay):
             da.add(k)
             gon.append(g)
     return sorted(gon, key=lambda g: g["ten"].lower())
+
+
+def la_crimson(g):
+    return (g["nguon"] == "steam" and str(g["ma"]) == "3321460") or os.path.isfile(
+        os.path.join(g["thu_muc"], "bin64", "CrimsonDesert.exe"))
 
 
 def khoa_game(g):
@@ -680,6 +685,9 @@ class App:
             elif not bg and thu:
                 self._nut(phai, "Cài gói thử", lambda g=g: self._hoi_goi_thu(g, thu), nho=True).pack(
                     side="right", padx=(4, 0))
+            if la_crimson(g):
+                self._nut(phai, "Việt hóa bằng Claude", lambda g=g: self.mo_cd(g), chinh=True, nho=True).pack(
+                    side="right", padx=(4, 0))
             if g["nguon"] == "tay":
                 self._nut(phai, "Bỏ", lambda g=g: self.bo_tay(g), nho=True).pack(side="right", padx=(4, 0))
         if not hien:
@@ -723,6 +731,11 @@ class App:
                 elif tin[0] == "ban_moi":
                     self.ban_moi = tin[1]
                     self.nut_cap_nhat.config(text=f"Cập nhật lên v{tin[1]['phien_ban']}", bg=UI_DO, fg="#ffffff")
+                elif tin[0] == "goi":
+                    try:
+                        tin[1]()
+                    except Exception:
+                        pass
                 elif tin[0] == "thoat":
                     self.root.after(500, self.root.destroy)
         except queue.Empty:
@@ -831,6 +844,155 @@ class App:
             ap_dung_cap_nhat(tt, bao)
             self.q.put(("thoat",))
         self._nen(viec, "Đang khởi động lại bản mới...")
+
+    # ---------------------------------------------------------- Viet hoa Crimson Desert bang Claude
+    def mo_cd(self, g):
+        import viet_hoa_cd as vcd
+        tk = self.tk
+        if getattr(self, "cua_so_cd", None) is not None:
+            try:
+                self.cua_so_cd.lift()
+                return
+            except Exception:
+                pass
+        w = tk.Toplevel(self.root)
+        self.cua_so_cd = w
+        w.title("Việt hóa Crimson Desert")
+        w.configure(bg=UI_NEN, padx=18, pady=14)
+        w.geometry("640x520")
+        w.protocol("WM_DELETE_WINDOW", lambda: self._dong_cd(w))
+        nhan = lambda chu, mau=UI_CHU, co=10, dam=False: tk.Label(
+            w, text=chu, bg=UI_NEN, fg=mau, font=("Segoe UI", co, "bold" if dam else "normal"),
+            anchor="w", justify="left", wraplength=600)
+        nhan(vcd.DOT[1]["ten"], co=13, dam=True).pack(fill="x")
+        nhan("• Giữ nguyên tiếng Anh: tên nhân vật, tên riêng, tên vật phẩm.\n"
+             "• Dùng mã Claude của app Dịch Game trên máy này. Đã dịch câu nào thì lưu lại, "
+             "lần sau chỉ dịch câu mới.\n"
+             "• Kết quả là gói zip để nhập vào DMM (game 2.04+ không cho sửa file trực tiếp). "
+             "Vào game để ngôn ngữ English.", UI_PHU, 9).pack(fill="x", pady=(6, 10))
+        self.cd_tk = nhan("Đang đọc chữ của game...", UI_CHU, 10)
+        self.cd_tk.pack(fill="x")
+        hang = tk.Frame(w, bg=UI_NEN)
+        hang.pack(fill="x", pady=(12, 4))
+        tk.Label(hang, text="Giới hạn tiền mỗi lần chạy:", bg=UI_NEN, fg=UI_CHU,
+                 font=("Segoe UI", 10)).pack(side="left", padx=(0, 8))
+        self.cd_gh = 2.0
+        self.cd_nut_gh = {}
+        for v in (1.0, 2.0, 5.0):
+            b = self._nut(hang, f"${v:.0f}", lambda v=v: self._chon_gh(v), nho=True)
+            b.pack(side="left", padx=2)
+            self.cd_nut_gh[v] = b
+        self._chon_gh(2.0)
+        hang2 = tk.Frame(w, bg=UI_NEN)
+        hang2.pack(fill="x", pady=10)
+        self.cd_nut_chay = self._nut(hang2, "Bắt đầu dịch", lambda: self._cd_chay(g), chinh=True)
+        self.cd_nut_chay.pack(side="left")
+        self._nut(hang2, "Tạm dừng", self._cd_dung).pack(side="left", padx=6)
+        self._nut(hang2, "Xuất gói cho DMM", lambda: self._cd_xuat(g)).pack(side="left")
+        self.cd_tien_do = nhan("", UI_VANG, 10)
+        self.cd_tien_do.pack(fill="x", pady=(6, 0))
+        self.cd_viec = None
+        self.cd_dang_chay = False
+
+        def nap():
+            try:
+                viec = vcd.ViecDich(g["thu_muc"], 1).nap()
+                self.q.put(("goi", lambda: self._cd_da_nap(viec)))
+            except Exception as e:
+                self.q.put(("goi", lambda e=e: self.cd_tk.config(text=f"Lỗi đọc game: {e}", fg=UI_LOI)))
+        threading.Thread(target=nap, daemon=True).start()
+
+    def _chon_gh(self, v):
+        self.cd_gh = v
+        for k, b in self.cd_nut_gh.items():
+            b.config(bg=UI_DO if k == v else UI_O)
+            b.bind("<Leave>", lambda e, b=b, k=k: b.config(bg=UI_DO if k == self.cd_gh else UI_O))
+
+    def _cd_da_nap(self, viec):
+        import viet_hoa_cd as vcd
+        self.cd_viec = viec
+        tk_ = viec.thong_ke()
+        gia, _ = vcd.doc_gia()
+        usd = vcd.ViecDich.uoc_tinh_usd(tk_["ky_tu_con"], gia)
+        co_khoa = bool(vcd.doc_khoa_claude())
+        self.cd_tk.config(fg=UI_CHU, text=(
+            f"{tk_['tong']:,} câu khác nhau • đã dịch {tk_['da_dich']:,} • còn {tk_['con']:,} câu "
+            f"({tk_['ky_tu_con']:,} ký tự)\n"
+            f"Ước tính chi phí phần còn lại: khoảng {usd:.2f} USD (≈ {usd * 26000:,.0f}đ)"
+            + ("" if co_khoa else "\n⚠ Chưa có mã Claude: mở app Dịch Game, dán mã vào ô rồi bấm Lưu mã.")
+        ).replace(",", "."))
+
+    def _cd_chay(self, g):
+        import viet_hoa_cd as vcd
+        if self.cd_viec is None or self.cd_dang_chay:
+            return
+        khoa = vcd.doc_khoa_claude()
+        if not khoa:
+            self.cd_tien_do.config(text="Chưa có mã Claude – lưu mã trong app Dịch Game trước.", fg=UI_LOI)
+            return
+        self.cd_dang_chay = True
+        self.cd_nut_chay.config(text="Đang dịch...")
+        viec = self.cd_viec
+        gh = self.cd_gh
+        bat_dau = time.time()
+
+        def bao(s):
+            self.q.put(("goi", lambda s=s: self.cd_tien_do.config(text=s, fg=UI_VANG)))
+
+        def tien_do(xong, tong, tien):
+            con = (time.time() - bat_dau) / max(xong, 1) * (tong - xong)
+            chu = (f"Đã dịch {xong:,}/{tong:,} câu ({xong * 100 // tong}%) • đã tốn {tien:.3f} USD "
+                   f"• còn khoảng {con / 60:.0f} phút").replace(",", ".")
+            self.q.put(("goi", lambda: self.cd_tien_do.config(text=chu, fg=UI_VANG)))
+
+        def chay():
+            try:
+                xong = viec.chay(khoa, gh, bao, tien_do)
+                if xong:
+                    bao(f"Dịch xong đợt 1 ✓ (tốn {viec.tien:.3f} USD). Bấm \"Xuất gói cho DMM\".")
+            except Exception as e:
+                bao(f"Lỗi: {e}")
+            finally:
+                self.q.put(("goi", lambda: (setattr(self, "cd_dang_chay", False),
+                                            self.cd_nut_chay.config(text="Bắt đầu dịch"),
+                                            self._cd_da_nap(viec))))
+        threading.Thread(target=chay, daemon=True).start()
+
+    def _cd_dung(self):
+        if self.cd_viec is not None and self.cd_dang_chay:
+            self.cd_viec.dung.set()
+            self.cd_tien_do.config(text="Đang dừng sau các lô đang dịch dở...", fg=UI_VANG)
+
+    def _cd_xuat(self, g):
+        if self.cd_viec is None:
+            return
+        if self.cd_dang_chay:
+            self.cd_tien_do.config(text="Đợi dịch xong hoặc bấm Tạm dừng trước khi xuất gói.", fg=UI_VANG)
+            return
+        p = os.path.join(os.environ.get("USERPROFILE") or DU_LIEU, "Desktop", "VietHoa_CrimsonDesert.zip")
+        viec = self.cd_viec
+
+        def xuat():
+            try:
+                tk_ = viec.xuat_goi(p)
+                so = sum(tk_.values())
+                self.q.put(("goi", lambda: self.cd_tien_do.config(
+                    text=f"Đã xuất gói ({so:,} câu tiếng Việt) ra Desktop: VietHoa_CrimsonDesert.zip\n"
+                         "Trong DMM: tắt gói thử cũ → Import file này → bật → Mount Mods.".replace(",", "."),
+                    fg=UI_XANH)))
+                try:
+                    subprocess.Popen(["explorer", "/select,", p])
+                except Exception:
+                    pass
+            except Exception as e:
+                self.q.put(("goi", lambda e=e: self.cd_tien_do.config(text=f"Lỗi xuất gói: {e}", fg=UI_LOI)))
+        threading.Thread(target=xuat, daemon=True).start()
+
+    def _dong_cd(self, w):
+        if self.cd_dang_chay and self.cd_viec is not None:
+            self.cd_viec.dung.set()
+        self.cua_so_cd = None
+        w.destroy()
 
     def chay(self):
         self.root.mainloop()
