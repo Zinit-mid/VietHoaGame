@@ -39,14 +39,14 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller cryptography
+          python -m pip install pyinstaller cryptography ctranslate2 sentencepiece
 
       - name: Dong goi VietHoaGame.exe
         if: steps.pb.outputs.co_roi == '0'
         shell: pwsh
         run: >
           python -m PyInstaller --noconfirm --onefile --noconsole --name VietHoaGame
-          --icon icon.ico --add-data "icon.ico;." --add-data "danh_muc.json;." --hidden-import viet_hoa_cd --hidden-import crimson_desert --collect-submodules cryptography
+          --icon icon.ico --add-data "icon.ico;." --add-data "danh_muc.json;." --hidden-import viet_hoa_cd --hidden-import crimson_desert --collect-submodules cryptography --collect-all ctranslate2 --collect-all sentencepiece
           viet_hoa.py
 
       - name: Tao goi phat hanh

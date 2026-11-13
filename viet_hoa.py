@@ -9,7 +9,7 @@ va cai / go goi Viet hoa. Windows 10/11.
   - Game cap nhat de mat Viet hoa -> bao "Cai lai"
 """
 
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.4.0"
 REPO = "Zinit-mid/VietHoaGame"
 
 import ctypes
@@ -881,8 +881,17 @@ class App:
              "Vào game để ngôn ngữ English.", UI_PHU, 9).pack(fill="x", pady=(6, 10))
         self.cd_tk = nhan("Đang đọc chữ của game...", UI_CHU, 10)
         self.cd_tk.pack(fill="x")
+        hang_m = tk.Frame(w, bg=UI_NEN)
+        hang_m.pack(fill="x", pady=(12, 0))
+        tk.Label(hang_m, text="Máy dịch:", bg=UI_NEN, fg=UI_CHU, font=("Segoe UI", 10)).pack(side="left", padx=(0, 8))
+        self.cd_may = "claude"
+        self.cd_nut_may = {}
+        for k, chu in (("claude", "Claude (tốn tiền, hay hơn)"), ("offline", "Offline (miễn phí)")):
+            b = self._nut(hang_m, chu, lambda k=k: self._chon_may(k), nho=True)
+            b.pack(side="left", padx=2)
+            self.cd_nut_may[k] = b
         hang = tk.Frame(w, bg=UI_NEN)
-        hang.pack(fill="x", pady=(12, 4))
+        hang.pack(fill="x", pady=(8, 4))
         tk.Label(hang, text="Giới hạn tiền mỗi lần chạy:", bg=UI_NEN, fg=UI_CHU,
                  font=("Segoe UI", 10)).pack(side="left", padx=(0, 8))
         self.cd_gh = 2.0
@@ -922,8 +931,19 @@ class App:
             b.config(bg=UI_DO if k == d else UI_O)
             b.bind("<Leave>", lambda e, b=b, k=k: b.config(bg=UI_DO if k == self.cd_dot else UI_O))
         self.cd_ten_dot.config(text=vcd.DOT[d]["ten"])
+        self._chon_may("offline" if d >= 2 else "claude", ve=False)
         if self.cd_viec is not None:
             self.cd_viec.dot = d
+            self._cd_da_nap(self.cd_viec)
+
+    def _chon_may(self, k, ve=True):
+        if self.cd_dang_chay:
+            return
+        self.cd_may = k
+        for m, b in self.cd_nut_may.items():
+            b.config(bg=UI_DO if m == k else UI_O)
+            b.bind("<Leave>", lambda e, b=b, m=m: b.config(bg=UI_DO if m == self.cd_may else UI_O))
+        if ve and self.cd_viec is not None:
             self._cd_da_nap(self.cd_viec)
 
     def _chon_gh(self, v):
@@ -939,20 +959,25 @@ class App:
         tk_ = viec.thong_ke()
         gia, _ = vcd.doc_gia()
         usd = vcd.ViecDich.uoc_tinh_usd(tk_["ky_tu_con"], gia)
-        co_khoa = bool(vcd.doc_khoa_claude())
-        self.cd_tk.config(fg=UI_CHU, text=(
-            f"{tk_['tong']:,} câu khác nhau • đã dịch {tk_['da_dich']:,} • còn {tk_['con']:,} câu "
-            f"({tk_['ky_tu_con']:,} ký tự)\n"
-            f"Ước tính chi phí phần còn lại: khoảng {usd:.2f} USD (≈ {usd * 26000:,.0f}đ)"
-            + ("" if co_khoa else "\n⚠ Chưa có mã Claude: mở app Dịch Game, dán mã vào ô rồi bấm Lưu mã.")
-        ).replace(",", "."))
+        dau = (f"{tk_['tong']:,} câu khác nhau • đã dịch {tk_['da_dich']:,} • còn {tk_['con']:,} câu "
+               f"({tk_['ky_tu_con']:,} ký tự)\n")
+        if self.cd_may == "offline":
+            ok, ly_do = vcd.co_offline()
+            duoi = ("Dịch offline bằng CPU: miễn phí, chất lượng vừa phải, mất khoảng "
+                    f"{max(1, tk_['ky_tu_con'] // 60000)}–{max(2, tk_['ky_tu_con'] // 25000)} phút."
+                    if ok else f"⚠ Không dịch offline được: {ly_do}")
+        else:
+            duoi = (f"Ước tính chi phí phần còn lại: khoảng {usd:.2f} USD (≈ {usd * 26000:,.0f}đ)"
+                    + ("" if vcd.doc_khoa_claude() else
+                       "\n⚠ Chưa có mã Claude: mở app Dịch Game, dán mã vào ô rồi bấm Lưu mã."))
+        self.cd_tk.config(fg=UI_CHU, text=(dau + duoi).replace(",", "."))
 
     def _cd_chay(self, g):
         import viet_hoa_cd as vcd
         if self.cd_viec is None or self.cd_dang_chay:
             return
         khoa = vcd.doc_khoa_claude()
-        if not khoa:
+        if self.cd_may == "claude" and not khoa:
             self.cd_tien_do.config(text="Chưa có mã Claude – lưu mã trong app Dịch Game trước.", fg=UI_LOI)
             return
         self.cd_dang_chay = True
@@ -966,13 +991,15 @@ class App:
 
         def tien_do(xong, tong, tien):
             con = (time.time() - bat_dau) / max(xong, 1) * (tong - xong)
-            chu = (f"Đã dịch {xong:,}/{tong:,} câu ({xong * 100 // tong}%) • đã tốn {tien:.3f} USD "
-                   f"• còn khoảng {con / 60:.0f} phút").replace(",", ".")
+            chu = (f"Đã dịch {xong:,}/{tong:,} câu ({xong * 100 // tong}%) • "
+                   + (f"đã tốn {tien:.3f} USD " if self.cd_may == "claude" else "offline, miễn phí ")
+                   + f"• còn khoảng {con / 60:.0f} phút").replace(",", ".")
             self.q.put(("goi", lambda: self.cd_tien_do.config(text=chu, fg=UI_VANG)))
 
         def chay():
             try:
-                xong = viec.chay(khoa, gh, bao, tien_do)
+                xong = (viec.chay_offline(bao, tien_do) if self.cd_may == "offline"
+                        else viec.chay(khoa, gh, bao, tien_do))
                 if xong:
                     bao(f"Dịch xong đợt {viec.dot} ✓ (tốn {viec.tien:.3f} USD). Bấm \"Xuất gói cho DMM\".")
             except Exception as e:

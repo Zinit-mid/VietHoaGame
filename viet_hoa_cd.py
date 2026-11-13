@@ -188,6 +188,110 @@ class Claude:
         raise RuntimeError("Claude bận hoặc mất mạng, đã thử lại nhiều lần")
 
 
+# ================================================================ dich offline (mo hinh cua app Dich Game)
+
+THU_MUC_OFFLINE = os.path.join(DICH_GAME, "mo_hinh", "quickmt-en-vi")
+TEP_OFFLINE = ["config.json", "source_vocabulary.json", "target_vocabulary.json", "src.spm.model",
+               "tgt.spm.model", "model.bin"]
+
+
+def co_offline():
+    """-> (co_the_dung, ly_do)"""
+    try:
+        import ctranslate2  # noqa: F401
+        import sentencepiece  # noqa: F401
+    except Exception:
+        return False, "bản launcher này thiếu thư viện dịch offline"
+    if not all(os.path.isfile(os.path.join(THU_MUC_OFFLINE, t)) for t in TEP_OFFLINE):
+        return False, ("chưa có mô hình offline – mở app Dịch Game, chọn chế độ dịch Offline một lần "
+                       "để app tải mô hình (~400 MB)")
+    return True, ""
+
+
+class Offline:
+    """quickmt-en-vi qua CTranslate2 tren CPU. Giu the bang cach chi dich phan chu giua cac the."""
+    TACH_CAU = re.compile(r"(?<=[.!?…])\s+(?=[\"'“A-Z0-9(])")
+
+    def __init__(self):
+        import ctranslate2
+        import sentencepiece as spm
+        so = max(2, min(8, (os.cpu_count() or 8) - 2))
+        self.tr = ctranslate2.Translator(THU_MUC_OFFLINE, device="cpu", compute_type="int8",
+                                         inter_threads=1, intra_threads=so)
+        self.sp_vao = spm.SentencePieceProcessor(model_file=os.path.join(THU_MUC_OFFLINE, "src.spm.model"))
+        self.sp_ra = spm.SentencePieceProcessor(model_file=os.path.join(THU_MUC_OFFLINE, "tgt.spm.model"))
+
+    def _dich_cau(self, cac_cau):
+        kq = []
+        for i in range(0, len(cac_cau), 32):
+            phan = cac_cau[i:i + 32]
+            ra = self.tr.translate_batch([self.sp_vao.encode(c, out_type=str) for c in phan],
+                                         beam_size=2, max_decoding_length=256, max_batch_size=32)
+            for r in ra:
+                manh = r.hypotheses[0]
+                try:
+                    kq.append(self.sp_ra.decode(manh).strip())
+                except Exception:
+                    kq.append(self.sp_ra.decode_pieces(manh).strip())
+        return kq
+
+    def _dich_doan(self, cac_doan):
+        """Dich cac doan chu (khong co <..>, xuong dong). Ma {..} giua cau thay bang ZQn roi tra lai;
+        neu mo hinh lam mat ma thi dich tung manh giua cac ma."""
+        cau, khuon = [], []
+        for doan in cac_doan:
+            ma = re.findall(r"\{[^{}]*\}", doan)
+            tam = doan
+            for n, m in enumerate(ma):
+                tam = tam.replace(m, f"ZQ{n}", 1)
+            ds = [c for c in self.TACH_CAU.split(tam.strip()) if c]
+            khuon.append((doan, ma, len(cau), len(ds)))
+            cau.extend(ds)
+        ban = self._dich_cau(cau) if cau else []
+        kq, lai = [], []
+        for k, (doan, ma, dau, so) in enumerate(khuon):
+            vi = " ".join(ban[dau:dau + so])
+            if ma:
+                if all(vi.count(f"ZQ{n}") == 1 for n in range(len(ma))) and not re.search(rf"ZQ{len(ma)}", vi):
+                    for n, m in enumerate(ma):
+                        vi = vi.replace(f"ZQ{n}", m)
+                else:
+                    vi = None
+                    lai.append(k)
+            kq.append(vi)
+        for k in lai:   # du phong: dich tung manh giua cac ma
+            doan = khuon[k][0]
+            manh = re.split(r"(\{[^{}]*\})", doan)
+            chu = [m for m in manh if m and not m.startswith("{") and re.search(r"[A-Za-z]{2,}", m)]
+            dich = dict(zip(chu, self._dich_cau([m.strip() for m in chu]))) if chu else {}
+            kq[k] = "".join((m[:len(m) - len(m.lstrip())] + dich[m] + m[len(m.rstrip()):]) if m in dich else m
+                            for m in manh)
+        return kq
+
+    def dich_lo(self, lo):
+        """lo: [chuoi] -> [ban dich | None]"""
+        khuon, doan_can = [], []
+        for s in lo:
+            phan = []
+            for doan in re.split(r"(<[^<>]*>|\[EMPTY\]|\n)", s):
+                if not doan:
+                    continue
+                if THE.fullmatch(doan) or doan == "\n" or not re.search(r"[A-Za-z]{2,}", THE.sub("", doan)):
+                    phan.append(("giu", doan))
+                    continue
+                trai = doan[:len(doan) - len(doan.lstrip())]
+                phai = doan[len(doan.rstrip()):]
+                phan.append(("dich", trai, len(doan_can), phai))
+                doan_can.append(doan.strip())
+            khuon.append(phan)
+        ban = self._dich_doan(doan_can) if doan_can else []
+        kq = []
+        for phan in khuon:
+            vi = "".join(p[1] if p[0] == "giu" else p[1] + ban[p[2]] + p[3] for p in phan)
+            kq.append(vi if vi.strip() else None)
+        return kq
+
+
 def doc_khoa_claude():
     p = os.path.join(DICH_GAME, "khoa_api.txt")
     try:
@@ -345,6 +449,44 @@ class ViecDich:
             ok = vi.strip() and the_cua(en) == the_cua(vi)
             ra_ds.append(vi if ok else None)
         return ra_ds, tien
+
+    def chay_offline(self, bao, tien_do):
+        ok, ly_do = co_offline()
+        if not ok:
+            raise LoiDung(ly_do)
+        ds = self.cau_can_dich()
+        tong = len(ds)
+        if not tong:
+            bao("Đợt này đã dịch xong hết.")
+            return True
+        self.dung.clear()
+        self.tien = 0.0
+        bao("Đang nạp mô hình dịch offline...")
+        may = Offline()
+        bao(f"Bắt đầu dịch offline {tong} câu...")
+        xong, lan_luu = 0, time.time()
+        for i in range(0, tong, 24):
+            if self.dung.is_set():
+                break
+            lo = ds[i:i + 24]
+            try:
+                kq = may.dich_lo(lo)
+            except Exception as e:
+                self.loi += len(lo)
+                bao(f"Lỗi dịch offline ({e}) – bỏ qua lô này")
+                kq = [None] * len(lo)
+            with self.khoa:
+                for en, vi in zip(lo, kq):
+                    if vi is not None and the_cua(en) == the_cua(vi):
+                        self.bo_nho[en] = vi
+                        self.da_doi += 1
+            xong += len(lo)
+            tien_do(xong, tong, 0.0)
+            if time.time() - lan_luu > 30:
+                self.luu()
+                lan_luu = time.time()
+        self.luu()
+        return not self.dung.is_set() and not self.cau_can_dich()
 
     def chay(self, khoa_claude, gioi_han_usd, bao, tien_do):
         gia, mo_hinh = doc_gia()
