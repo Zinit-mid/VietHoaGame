@@ -1,9 +1,8 @@
-## Việt Hóa Game v0.2.0
+## Việt Hóa Game v0.3.0
 
-**Việt hóa Crimson Desert bằng Claude – đợt 1**
-- Nút **"Việt hóa bằng Claude"** ở dòng Crimson Desert
-- Đợt 1: menu, giao diện, nhiệm vụ, hội thoại nhiệm vụ, cắt cảnh, lời dẫn truyện (~56.000 câu)
-- Giữ nguyên tiếng Anh: tên nhân vật, tên riêng, tên vật phẩm
-- Dùng mã Claude của app Dịch Game trên cùng máy; hiện ước tính chi phí trước khi chạy, có giới hạn tiền mỗi lần chạy
-- Lưu tiến độ: tắt giữa chừng, lần sau chạy tiếp; game cập nhật thì chỉ dịch câu mới
-- **Xuất gói cho DMM** ra Desktop (VietHoa_CrimsonDesert.zip) → nhập vào DMM → Mount
+**Crimson Desert – thêm Đợt 2**
+- Cửa sổ "Việt hóa bằng Claude" có nút chọn **Đợt 1 / Đợt 2**
+- Đợt 2: lời thoại khi chiến đấu / đi đường, mô tả vật phẩm, mô tả phe phái, kỹ năng, sự kiện, quản lý trại (~25.000 câu)
+- Tên vật phẩm, tên đồ nâng cấp (+1…+10), tên đồ vật, tên riêng vẫn giữ tiếng Anh – chỉ dịch câu mô tả
+- "Xuất gói cho DMM" gộp tất cả các đợt đã dịch vào một file
+- Giới hạn tiền tính riêng cho từng lần chạy

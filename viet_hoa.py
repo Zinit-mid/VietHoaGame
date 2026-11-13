@@ -9,7 +9,7 @@ va cai / go goi Viet hoa. Windows 10/11.
   - Game cap nhat de mat Viet hoa -> bao "Cai lai"
 """
 
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.3.0"
 REPO = "Zinit-mid/VietHoaGame"
 
 import ctypes
@@ -864,7 +864,16 @@ class App:
         nhan = lambda chu, mau=UI_CHU, co=10, dam=False: tk.Label(
             w, text=chu, bg=UI_NEN, fg=mau, font=("Segoe UI", co, "bold" if dam else "normal"),
             anchor="w", justify="left", wraplength=600)
-        nhan(vcd.DOT[1]["ten"], co=13, dam=True).pack(fill="x")
+        hang0 = tk.Frame(w, bg=UI_NEN)
+        hang0.pack(fill="x")
+        self.cd_dot = 1
+        self.cd_nut_dot = {}
+        for d in sorted(vcd.DOT):
+            b = self._nut(hang0, f"Đợt {d}", lambda d=d: self._chon_dot(d), nho=True)
+            b.pack(side="left", padx=(0, 4))
+            self.cd_nut_dot[d] = b
+        self.cd_ten_dot = nhan(vcd.DOT[1]["ten"], co=12, dam=True)
+        self.cd_ten_dot.pack(fill="x", pady=(8, 0))
         nhan("• Giữ nguyên tiếng Anh: tên nhân vật, tên riêng, tên vật phẩm.\n"
              "• Dùng mã Claude của app Dịch Game trên máy này. Đã dịch câu nào thì lưu lại, "
              "lần sau chỉ dịch câu mới.\n"
@@ -893,6 +902,7 @@ class App:
         self.cd_tien_do.pack(fill="x", pady=(6, 0))
         self.cd_viec = None
         self.cd_dang_chay = False
+        self._chon_dot(1)
 
         def nap():
             try:
@@ -901,6 +911,20 @@ class App:
             except Exception as e:
                 self.q.put(("goi", lambda e=e: self.cd_tk.config(text=f"Lỗi đọc game: {e}", fg=UI_LOI)))
         threading.Thread(target=nap, daemon=True).start()
+
+    def _chon_dot(self, d):
+        import viet_hoa_cd as vcd
+        if self.cd_dang_chay:
+            self.cd_tien_do.config(text="Đang dịch – bấm Tạm dừng trước khi đổi đợt.", fg=UI_VANG)
+            return
+        self.cd_dot = d
+        for k, b in self.cd_nut_dot.items():
+            b.config(bg=UI_DO if k == d else UI_O)
+            b.bind("<Leave>", lambda e, b=b, k=k: b.config(bg=UI_DO if k == self.cd_dot else UI_O))
+        self.cd_ten_dot.config(text=vcd.DOT[d]["ten"])
+        if self.cd_viec is not None:
+            self.cd_viec.dot = d
+            self._cd_da_nap(self.cd_viec)
 
     def _chon_gh(self, v):
         self.cd_gh = v
@@ -911,6 +935,7 @@ class App:
     def _cd_da_nap(self, viec):
         import viet_hoa_cd as vcd
         self.cd_viec = viec
+        viec.dot = self.cd_dot
         tk_ = viec.thong_ke()
         gia, _ = vcd.doc_gia()
         usd = vcd.ViecDich.uoc_tinh_usd(tk_["ky_tu_con"], gia)
@@ -949,7 +974,7 @@ class App:
             try:
                 xong = viec.chay(khoa, gh, bao, tien_do)
                 if xong:
-                    bao(f"Dịch xong đợt 1 ✓ (tốn {viec.tien:.3f} USD). Bấm \"Xuất gói cho DMM\".")
+                    bao(f"Dịch xong đợt {viec.dot} ✓ (tốn {viec.tien:.3f} USD). Bấm \"Xuất gói cho DMM\".")
             except Exception as e:
                 bao(f"Lỗi: {e}")
             finally:

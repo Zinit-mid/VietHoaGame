@@ -1,4 +1,4 @@
-VIỆT HÓA GAME v0.2.0 – HƯỚNG DẪN (Windows 10/11)
+VIỆT HÓA GAME v0.3.0 – HƯỚNG DẪN (Windows 10/11)
 
 1. Mở VietHoaGame.exe. App tự tìm game trên Steam, Epic, GOG.
    Không thấy game: bấm "+ Thêm game bằng tay" rồi chọn thư mục cài game.
@@ -17,7 +17,7 @@ LỖI THƯỜNG GẶP
 
 VIỆT HÓA CRIMSON DESERT (game 2.04 trở lên)
   1. Lưu mã Claude trong app Dịch Game (một lần).
-  2. Bấm "Việt hóa bằng Claude" ở dòng Crimson Desert -> chọn giới hạn tiền -> "Bắt đầu dịch".
+  2. Bấm "Việt hóa bằng Claude" ở dòng Crimson Desert -> chọn Đợt 1 hoặc Đợt 2 -> chọn giới hạn tiền -> "Bắt đầu dịch".
   3. Dịch xong bấm "Xuất gói cho DMM" -> file VietHoa_CrimsonDesert.zip nằm ở Desktop.
   4. Mở DMM: Import file zip -> bật -> Mount Mods -> Start Game. Ngôn ngữ game để English.
 

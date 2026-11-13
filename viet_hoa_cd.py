@@ -28,6 +28,12 @@ DOT = {
         "file": ["ui", "localstringinfo", "quest", "questdialog", "sequencer", "narrationdialog", "talktree",
                  "stageclosedialog", "failmessage", "gameadvice", "interaction", "inventory", "equiptype",
                  "symboltext", "minigame", "platformservice", "uisocialaction", "lookat", "board", "bank"]},
+    2: {"ten": "Đợt 2 – lời thoại chiến đấu / đi đường, mô tả vật phẩm, phe phái, kỹ năng, sự kiện",
+        "file": ["aidialog", "item", "multichange", "gimmick", "character", "npc", "faction", "patterndescription",
+                 "managementbuff", "managementneedssynergy", "globalgameevent", "entitlement", "housingobject",
+                 "sublevel", "house", "housingroom", "housingobjectgroup", "socket"],
+        # cac file nay lan ten va mo ta: chi dich CAU (mo ta), giu nguyen ten / nhan
+        "chi_cau": ["item", "multichange", "gimmick", "character", "npc", "faction", "housingobject"]},
 }
 # file chi chua ten -> lam bang ten rieng (giu nguyen, khong dich)
 FILE_TEN = ["npcname", "character", "region", "faction", "factionoperationgroup", "item", "itemgroup",
@@ -60,6 +66,14 @@ THE = re.compile(r"<[^<>]*>|\{[^{}]*\}|\[EMPTY\]")
 def khong_can_dich(s):
     t = THE.sub("", s).strip()
     return not t or not re.search(r"[A-Za-z]{2,}", t)
+
+
+def la_cau(s):
+    """Chuoi la cau / doan van (mo ta) chu khong phai ten hay nhan ngan."""
+    t = THE.sub(" ", s).strip()
+    if "<br/>" in s or len(t) >= 70:
+        return True
+    return len(t.split()) >= 4 and (t.endswith((".", "!", "?", "…", '"')) or ". " in t)
 
 
 def the_cua(s):
@@ -249,21 +263,35 @@ class ViecDich:
             f.write(du_lieu)
         os.replace(tam, FILE_BO_NHO)
 
+    def nen_dich(self, f, v, dot=None):
+        """Chuoi v trong file f co thuoc dien dich khong (dung luat cua dot chua file f)."""
+        if khong_can_dich(v) or self.bang_ten.la_ten(v):
+            return False
+        d = dot or next((k for k, x in DOT.items() if f in x["file"]), None)
+        if d is None:
+            return False
+        if f in DOT[d].get("chi_cau", []) and not la_cau(v):
+            return False
+        return True
+
+    def _chuoi_cua_dot(self):
+        for f in DOT[self.dot]["file"]:
+            for _, _, v in self.nhom.get(f, {}).get("ds", []):
+                if self.nen_dich(f, v, self.dot):
+                    yield v
+
     def cau_can_dich(self):
         """Cac chuoi tieng Anh (khong trung) cua dot nay chua co trong bo nho."""
         ds, da = [], set()
-        for f in DOT[self.dot]["file"]:
-            for _, _, v in self.nhom.get(f, {}).get("ds", []):
-                if v in da or v in self.bo_nho:
-                    continue
-                da.add(v)
-                if khong_can_dich(v) or self.bang_ten.la_ten(v):
-                    continue
-                ds.append(v)
+        for v in self._chuoi_cua_dot():
+            if v in da or v in self.bo_nho:
+                continue
+            da.add(v)
+            ds.append(v)
         return ds
 
     def thong_ke(self):
-        tat_ca = {v for f in DOT[self.dot]["file"] for _, _, v in self.nhom.get(f, {}).get("ds", [])}
+        tat_ca = set(self._chuoi_cua_dot())
         con = self.cau_can_dich()
         return {"tong": len(tat_ca), "da_dich": sum(1 for v in tat_ca if v in self.bo_nho),
                 "con": len(con), "ky_tu_con": sum(len(v) for v in con)}
@@ -327,6 +355,7 @@ class ViecDich:
             bao("Đợt này đã dịch xong hết.")
             return True
         self.dung.clear()
+        self.tien = 0.0
         lo_list = list(self._chia_lo(ds))
         xong = 0
         lan_luu = time.time()
@@ -392,7 +421,8 @@ class ViecDich:
             g = self.nhom.get(f)
             if not g:
                 continue
-            m = {k: self.bo_nho[v] for _, k, v in g["ds"] if v in self.bo_nho and self.bo_nho[v] != v}
+            m = {k: self.bo_nho[v] for _, k, v in g["ds"]
+                 if v in self.bo_nho and self.bo_nho[v] != v and self.nen_dich(f, v)}
             if m:
                 ban_dich[f] = m
         thong_ke = cd.dong_goi(self.nhom, ban_dich, tam, "eng")
