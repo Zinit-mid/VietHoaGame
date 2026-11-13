@@ -1,0 +1,18 @@
+VIỆT HÓA GAME v0.1.0 – HƯỚNG DẪN (Windows 10/11)
+
+1. Mở VietHoaGame.exe. App tự tìm game trên Steam, Epic, GOG.
+   Không thấy game: bấm "+ Thêm game bằng tay" rồi chọn thư mục cài game.
+2. Game có Việt hóa: bấm "Cài Việt hóa". App sao lưu file gốc trước khi cài.
+3. Gỡ Việt hóa: bấm "Khôi phục bản gốc".
+4. Game cập nhật làm mất Việt hóa: dòng trạng thái báo "cần cài lại" – bấm "Cài lại".
+
+GÓI THỬ
+  - Nút "Cài gói thử" chỉ thêm file VIET_HOA_THU.txt vào thư mục game, không sửa file nào của game.
+  - Dùng để kiểm tra launcher. Bấm "Khôi phục bản gốc" để xóa file đó.
+
+LỖI THƯỜNG GẶP
+  - "không ghi được vào thư mục game": tắt game rồi thử lại; game trong Program Files thì
+    bấm "Chạy bằng quyền quản trị".
+  - Mất bản sao lưu: dùng "Kiểm tra tính toàn vẹn tệp" của Steam / Epic để lấy lại file gốc.
+
+Dữ liệu của app: %APPDATA%\VietHoaGame
